@@ -1,0 +1,44 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'packages/frontend/**'
+      - 'packages/shared/**'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'packages/frontend/**'
+      - 'packages/shared/**'
+      - '.github/workflows/frontend.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm install
+          cd packages/frontend
+          npm install
+
+      - name: Build
+        run: |
+          cd packages/frontend
+          npm run build
+
+      - name: Run tests
+        run: |
+          cd packages/frontend
+          npm test 

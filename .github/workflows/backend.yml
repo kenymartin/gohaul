@@ -1,0 +1,68 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'packages/backend/**'
+      - 'packages/shared/**'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'packages/backend/**'
+      - 'packages/shared/**'
+      - '.github/workflows/backend.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: gohaul
+          POSTGRES_PASSWORD: gohaul
+          POSTGRES_DB: gohaul_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm install
+          cd packages/backend
+          npm install
+
+      - name: Generate Prisma Client
+        run: |
+          cd packages/backend
+          npx prisma generate
+
+      - name: Run migrations
+        run: |
+          cd packages/backend
+          DATABASE_URL="postgresql://gohaul:gohaul@localhost:5432/gohaul_test" npx prisma migrate deploy
+
+      - name: Run tests
+        run: |
+          cd packages/backend
+          npm test
+        env:
+          DATABASE_URL: "postgresql://gohaul:gohaul@localhost:5432/gohaul_test"
+          JWT_SECRET: "test-secret"
+          NODE_ENV: "test" 
