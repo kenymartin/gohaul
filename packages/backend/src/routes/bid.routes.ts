@@ -1,199 +1,96 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { CreateBidDto, ShipmentStatus, UserRole } from '@gohaul/shared';
-import { authenticate, authorize, AuthRequest } from '../utils/auth';
-import { sendBidPlacedEmail, sendBidAcceptedEmail } from '../services/email.service';
+import { BidController } from '../controllers/bid.controller';
+import { authenticate } from '../middleware/auth';
+import { validateRole } from '../middleware/roles';
+import { validateRequest } from '../middleware/validation';
 import { z } from 'zod';
 
 const router = Router();
-const prisma = new PrismaClient();
+const bidController = new BidController();
 
+// Validation schemas
 const createBidSchema = z.object({
-  shipmentId: z.string().uuid(),
-  price: z.number().positive(),
-  eta: z.string().transform((str) => new Date(str)),
+  body: z.object({
+    shipmentId: z.string().uuid(),
+    price: z.number().positive(),
+    eta: z.string().datetime()
+  })
 });
 
-// Create bid
+const updateBidSchema = z.object({
+  body: z.object({
+    price: z.number().positive().optional(),
+    eta: z.string().datetime().optional()
+  }),
+  params: z.object({
+    bidId: z.string().uuid()
+  })
+});
+
+const bidIdParamSchema = z.object({
+  params: z.object({
+    bidId: z.string().uuid()
+  })
+});
+
+const shipmentIdParamSchema = z.object({
+  params: z.object({
+    shipmentId: z.string().uuid()
+  })
+});
+
+// Routes
 router.post(
   '/',
   authenticate,
-  authorize([UserRole.TRANSPORTER]),
-  async (req: AuthRequest, res) => {
-    try {
-      const data = createBidSchema.parse(req.body) as CreateBidDto;
-      const transporterId = req.user!.userId;
-
-      const shipment = await prisma.shipment.findUnique({
-        where: { id: data.shipmentId },
-        include: { customer: true },
-      });
-
-      if (!shipment) {
-        return res.status(404).json({
-          success: false,
-          error: 'Shipment not found',
-        });
-      }
-
-      if (shipment.status !== ShipmentStatus.AWAITING_BIDS) {
-        return res.status(400).json({
-          success: false,
-          error: 'Shipment is not accepting bids',
-        });
-      }
-
-      const bid = await prisma.bid.create({
-        data: {
-          ...data,
-          transporterId,
-        },
-        include: {
-          transporter: true,
-        },
-      });
-
-      // Send email notification
-      await sendBidPlacedEmail(bid, shipment, shipment.customer);
-
-      res.status(201).json({
-        success: true,
-        data: bid,
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          success: false,
-          error: error.errors,
-        });
-      }
-      res.status(500).json({
-        success: false,
-        error: 'Internal server error',
-      });
-    }
-  }
+  validateRole(['TRANSPORTER']),
+  validateRequest(createBidSchema),
+  bidController.createBid.bind(bidController)
 );
 
-// Accept bid
-router.post(
-  '/:id/accept',
+router.get(
+  '/my-bids',
   authenticate,
-  authorize([UserRole.CUSTOMER]),
-  async (req: AuthRequest, res) => {
-    try {
-      const { id } = req.params;
-
-      const bid = await prisma.bid.findUnique({
-        where: { id },
-        include: {
-          shipment: true,
-          transporter: true,
-        },
-      });
-
-      if (!bid) {
-        return res.status(404).json({
-          success: false,
-          error: 'Bid not found',
-        });
-      }
-
-      if (bid.shipment.customerId !== req.user!.userId) {
-        return res.status(403).json({
-          success: false,
-          error: 'Not authorized to accept this bid',
-        });
-      }
-
-      // Update bid status
-      const updatedBid = await prisma.bid.update({
-        where: { id },
-        data: { status: 'ACCEPTED' },
-      });
-
-      // Update shipment status and assign transporter
-      await prisma.shipment.update({
-        where: { id: bid.shipmentId },
-        data: {
-          status: ShipmentStatus.BID_ACCEPTED,
-          transporterId: bid.transporterId,
-        },
-      });
-
-      // Reject other bids
-      await prisma.bid.updateMany({
-        where: {
-          shipmentId: bid.shipmentId,
-          id: { not: id },
-        },
-        data: { status: 'REJECTED' },
-      });
-
-      // Send email notification
-      await sendBidAcceptedEmail(bid, bid.shipment, bid.transporter);
-
-      res.json({
-        success: true,
-        data: updatedBid,
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: 'Internal server error',
-      });
-    }
-  }
+  validateRole(['TRANSPORTER']),
+  bidController.getMyBids.bind(bidController)
 );
 
-// Get bids for a shipment
-router.get('/shipment/:shipmentId', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const { shipmentId } = req.params;
-    const { role, userId } = req.user!;
+router.get(
+  '/shipment/:shipmentId',
+  authenticate,
+  validateRequest(shipmentIdParamSchema),
+  bidController.getBidsForShipment.bind(bidController)
+);
 
-    const shipment = await prisma.shipment.findUnique({
-      where: { id: shipmentId },
-    });
+router.get(
+  '/:bidId',
+  authenticate,
+  validateRequest(bidIdParamSchema),
+  bidController.getBidById.bind(bidController)
+);
 
-    if (!shipment) {
-      return res.status(404).json({
-        success: false,
-        error: 'Shipment not found',
-      });
-    }
+router.put(
+  '/:bidId',
+  authenticate,
+  validateRole(['TRANSPORTER']),
+  validateRequest(updateBidSchema),
+  bidController.updateBid.bind(bidController)
+);
 
-    // Customers can only view bids for their shipments
-    if (role === UserRole.CUSTOMER && shipment.customerId !== userId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized to view these bids',
-      });
-    }
+router.post(
+  '/:bidId/accept',
+  authenticate,
+  validateRole(['CUSTOMER']),
+  validateRequest(bidIdParamSchema),
+  bidController.acceptBid.bind(bidController)
+);
 
-    const bids = await prisma.bid.findMany({
-      where: { shipmentId },
-      include: {
-        transporter: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    res.json({
-      success: true,
-      data: bids,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
-  }
-});
+router.delete(
+  '/:bidId',
+  authenticate,
+  validateRole(['TRANSPORTER']),
+  validateRequest(bidIdParamSchema),
+  bidController.deleteBid.bind(bidController)
+);
 
 export default router; 
