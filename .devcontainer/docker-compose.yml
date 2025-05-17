@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://gohaul:gohaul@db:5432/gohaul
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: gohaul
+      POSTGRES_PASSWORD: gohaul
+      POSTGRES_DB: gohaul
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres-data: 

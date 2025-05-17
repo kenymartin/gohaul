@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  TRANSPORTER
+}
+
+enum ShipmentStatus {
+  PENDING
+  AWAITING_BIDS
+  BID_ACCEPTED
+  IN_TRANSIT
+  DELIVERED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  shipments    Shipment[] @relation("CustomerShipments")
+  bids         Bid[]      @relation("TransporterBids")
+  assignments  Shipment[] @relation("TransporterAssignments")
+
+  @@map("users")
+}
+
+model Shipment {
+  id          String         @id @default(uuid())
+  customerId  String
+  customer    User           @relation("CustomerShipments", fields: [customerId], references: [id])
+  origin      String
+  destination String
+  size        String
+  weight      Float
+  description String
+  status      ShipmentStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  bids             Bid[]
+  assignedTo       User?    @relation("TransporterAssignments", fields: [transporterId], references: [id])
+  transporterId    String?
+
+  @@map("shipments")
+}
+
+model Bid {
+  id          String   @id @default(uuid())
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id])
+  transporterId String
+  transporter  User    @relation("TransporterBids", fields: [transporterId], references: [id])
+  price       Float
+  eta         DateTime
+  status      String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("bids")
+} 
