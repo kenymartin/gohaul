@@ -11,7 +11,10 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@prisma/client": ["../../node_modules/@prisma/client"]
+      "@prisma/client": ["../../node_modules/@prisma/client"],
+      "@gohaul/shared": ["../shared"],
+      "@gohaul/frontend": ["../frontend"],
+      "@gohaul/backend": ["."]
     }
   },
   "include": ["src/**/*"],

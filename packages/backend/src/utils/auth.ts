@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { User, UserRole } from '@gohaul/shared';
+import { User, UserRole } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -11,11 +11,11 @@ export interface JwtPayload {
   role: UserRole;
 }
 
-export interface AuthRequest extends Request {
+export interface AuthRequest extends Omit<Request, 'user'> {
   user?: JwtPayload;
 }
 
-export const generateToken = (user: User): string => {
+export const generateToken = (user: Pick<User, 'id' | 'email' | 'role'>): string => {
   return jwt.sign(
     { userId: user.id, email: user.email, role: user.role },
     JWT_SECRET,
@@ -47,7 +47,11 @@ export const authenticate = (
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    req.user = decoded;
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role
+    };
     next();
   } catch (error) {
     res.status(401).json({ success: false, error: 'Invalid token' });

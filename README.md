@@ -1,162 +1,91 @@
-# GoHaul - Logistics Management Platform
+# GoHaul
 
-A full-stack TypeScript monorepo project for managing shipments and transportation logistics. The platform connects customers with transporters, enabling efficient shipment management and bidding.
+A modern logistics platform for efficient cargo transportation.
 
-## 🚀 Features
+## Features
 
-- **User Authentication**
-  - JWT-based authentication
-  - Role-based access control (Customer/Transporter)
-  - Secure password handling
+- User authentication and authorization
+- Shipment management
+- Real-time tracking
+- Bidding system
+- Messaging system
+- Role-based access control
 
-- **Shipment Management**
-  - Create and track shipments
-  - Real-time status updates
-  - Detailed shipment information
+## Tech Stack
 
-- **Bidding System**
-  - Transporters can bid on available shipments
-  - Customers can review and accept bids
-  - Automated notifications
+- **Frontend**: Next.js, TypeScript, Tailwind CSS
+- **Backend**: Node.js, Express, TypeScript, Prisma
+- **Database**: PostgreSQL
+- **Authentication**: JWT
+- **Development**: Docker, VS Code Dev Containers
 
-- **Dashboard & Analytics**
-  - Shipment statistics
-  - Bid tracking
-  - Performance metrics
+## Prerequisites
 
-## 🛠 Tech Stack
+- [Docker](https://www.docker.com/get-started)
+- [VS Code](https://code.visualstudio.com/)
+- [VS Code Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
-- **Backend**
-  - Node.js + Express
-  - TypeScript
-  - Prisma ORM
-  - PostgreSQL
-  - Jest for testing
-
-- **Frontend**
-  - React + Vite
-  - TypeScript
-  - TailwindCSS
-  - React Hook Form
-
-- **Shared**
-  - Common TypeScript types
-  - Shared utilities
-
-## 📦 Project Structure
-
-```
-gohaul/
-├── packages/
-│   ├── backend/         # Node.js + Express backend
-│   ├── frontend/        # React + Vite frontend
-│   └── shared/          # Shared TypeScript types
-├── .devcontainer/       # Development container config
-└── docker-compose.yml   # Docker composition
-```
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Docker and Docker Compose
-- Node.js 20 or higher
-- npm or yarn
-
-### Development Setup
+## Getting Started
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/kenymartin/gohaul.git
+   git clone https://github.com/yourusername/gohaul.git
    cd gohaul
    ```
 
-2. Start the development containers:
+2. Open the project in VS Code:
    ```bash
-   docker-compose -f .devcontainer/docker-compose.yml up -d
+   code .
    ```
 
-3. Install dependencies:
-   ```bash
-   npm install
-   cd packages/frontend && npm install
-   cd ../backend && npm install
-   ```
+3. When prompted, click "Reopen in Container" or use the command palette (F1) and select "Remote-Containers: Reopen in Container"
 
-4. Set up environment variables:
-   Create `.env` file in `packages/backend` with:
-   ```
-   DATABASE_URL="postgresql://gohaul:gohaul@db:5432/gohaul"
-   JWT_SECRET="your-super-secret-jwt-key"
-   SMTP_HOST="smtp.mailtrap.io"
-   SMTP_PORT="2525"
-   SMTP_USER="your-mailtrap-user"
-   SMTP_PASS="your-mailtrap-password"
-   PORT=4000
-   NODE_ENV="development"
-   ```
+4. The development environment will be set up automatically. This includes:
+   - Installing dependencies
+   - Setting up the database
+   - Generating Prisma client
+   - Starting the development servers
 
-5. Run database migrations:
-   ```bash
-   cd packages/backend
-   npx prisma migrate dev
-   ```
+5. Access the applications:
+   - Frontend: http://localhost:3001
+   - Backend API: http://localhost:3000
 
-6. Start the development servers:
-   ```bash
-   # In packages/backend
-   npm run dev
+## Development
 
-   # In packages/frontend
-   npm run dev
-   ```
+- The project uses pnpm workspaces for managing packages
+- Frontend code is in `packages/frontend`
+- Backend code is in `packages/backend`
+- Shared types and utilities are in `packages/shared`
 
-The application will be available at:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:4000
-- Database: localhost:5432
+### Available Scripts
 
-## 🧪 Testing
+- `pnpm dev` - Start development servers
+- `pnpm build` - Build all packages
+- `pnpm test` - Run tests
+- `pnpm lint` - Run linters
+- `pnpm setup` - Setup development environment
 
-```bash
-# Run backend tests
-cd packages/backend
-npm test
+## Environment Variables
 
-# Run frontend tests
-cd packages/frontend
-npm test
+Create a `.env` file in the root directory with the following variables:
+
+```env
+# Database
+DATABASE_URL=postgresql://postgres:postgres@db:5432/gohaul?schema=public
+
+# JWT
+JWT_SECRET=your_jwt_secret_here
+
+# Ports
+PORT=3000
 ```
 
-## 📝 API Documentation
+## Contributing
 
-### Authentication Endpoints
-- `POST /api/auth/signup` - Register a new user
-- `POST /api/auth/login` - Login user
+1. Create a new branch for your feature
+2. Make your changes
+3. Submit a pull request
 
-### Shipment Endpoints
-- `POST /api/shipments` - Create a new shipment
-- `GET /api/shipments` - List shipments
-- `PATCH /api/shipments/:id/status` - Update shipment status
-- `DELETE /api/shipments/:id` - Delete shipment
+## License
 
-### Bid Endpoints
-- `POST /api/bids` - Create a new bid
-- `POST /api/bids/:id/accept` - Accept a bid
-- `GET /api/bids/shipment/:shipmentId` - Get bids for a shipment
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 👥 Authors
-
-- **Keny Martin** - *Initial work* 
+MIT 

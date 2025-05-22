@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { LoginDto, SignupDto, UserRole } from '@gohaul/shared';
+import { LoginDto, SignupDto, UserRole } from '@gohaul/shared/src/types/index';
 import { generateToken, hashPassword, comparePasswords } from '../utils/auth';
 import { z } from 'zod';
 

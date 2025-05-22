@@ -1,17 +1,43 @@
-FROM node:20-bullseye
+FROM node:20-alpine
 
-# Install basic development tools
-RUN apt update && apt install -y less git
+# Install system dependencies
+RUN apk add --no-cache \
+    git \
+    curl \
+    openssh-client \
+    python3 \
+    make \
+    g++
 
-# Ensure default `node` user has access to `sudo`
-ARG USERNAME=node
-RUN apt-get update \
-    && apt-get install -y sudo \
-    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
+# Install pnpm and typescript globally
+RUN npm install -g pnpm typescript
 
-# Install global npm packages
-RUN npm install -g prisma typescript ts-node nodemon
+# Create app directory
+WORKDIR /workspace
 
-# Set `SHELL` so it's available in VS Code terminal
-ENV SHELL /bin/bash 
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/frontend/package.json ./packages/frontend/
+COPY packages/shared/package.json ./packages/shared/
+
+# Install dependencies
+RUN pnpm install
+
+# Copy the rest of the application
+COPY . .
+
+# Build shared package
+RUN cd packages/shared && pnpm build
+
+# Ensure backend devDependencies are installed
+RUN cd packages/backend && pnpm install --filter @gohaul/backend...
+
+# Generate Prisma client
+RUN cd packages/backend && pnpm prisma:generate
+
+# Expose ports
+EXPOSE 3000 3001
+
+# Set default command
+CMD ["pnpm", "dev"] 

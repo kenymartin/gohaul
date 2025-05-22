@@ -8,7 +8,10 @@ const bidService = new BidService();
 export class BidController {
   async createBid(req: Request, res: Response, next: NextFunction) {
     try {
-      const transporterId = req.user.id;
+      if (!req.user) {
+        throw new AppError('User not authenticated', 401);
+      }
+      const transporterId = req.user.userId;
       const bidData: CreateBidDTO = {
         shipmentId: req.body.shipmentId,
         price: parseFloat(req.body.price),
@@ -49,7 +52,10 @@ export class BidController {
 
   async getMyBids(req: Request, res: Response, next: NextFunction) {
     try {
-      const transporterId = req.user.id;
+      if (!req.user) {
+        throw new AppError('User not authenticated', 401);
+      }
+      const transporterId = req.user.userId;
       const bids = await bidService.getBidsByTransporter(transporterId);
       res.json(bids);
     } catch (error) {
@@ -59,8 +65,11 @@ export class BidController {
 
   async updateBid(req: Request, res: Response, next: NextFunction) {
     try {
+      if (!req.user) {
+        throw new AppError('User not authenticated', 401);
+      }
       const { bidId } = req.params;
-      const transporterId = req.user.id;
+      const transporterId = req.user.userId;
       const updateData: UpdateBidDTO = {
         price: req.body.price ? parseFloat(req.body.price) : undefined,
         eta: req.body.eta ? new Date(req.body.eta) : undefined
@@ -76,7 +85,10 @@ export class BidController {
   async acceptBid(req: Request, res: Response, next: NextFunction) {
     try {
       const { bidId } = req.params;
-      const customerId = req.user.id;
+      if (!req.user) {
+        throw new AppError('User not authenticated', 401);
+      }
+      const customerId = req.user.userId;
 
       const bid = await bidService.acceptBid(bidId, customerId);
       res.json(bid);
@@ -88,7 +100,10 @@ export class BidController {
   async deleteBid(req: Request, res: Response, next: NextFunction) {
     try {
       const { bidId } = req.params;
-      const transporterId = req.user.id;
+      if (!req.user) {
+        throw new AppError('User not authenticated', 401);
+      }
+      const transporterId = req.user.userId;
 
       await bidService.deleteBid(bidId, transporterId);
       res.status(204).send();

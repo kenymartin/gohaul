@@ -1,25 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction, RequestHandler } from 'express';
 import { UserRole } from '@prisma/client';
 import { AppError } from '../utils/error';
+import { AuthRequest } from '../utils/auth';
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        role: UserRole;
-      };
-    }
-  }
-}
-
-export const validateRole = (allowedRoles: UserRole[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
+export const validateRole = (allowedRoles: UserRole[]): RequestHandler => {
+  return (req, res: Response, next: NextFunction) => {
+    const authReq = req as AuthRequest;
+    if (!authReq.user) {
       throw new AppError('User not authenticated', 401);
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(authReq.user.role)) {
       throw new AppError('User not authorized for this action', 403);
     }
 

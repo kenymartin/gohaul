@@ -33,6 +33,8 @@ model User {
   shipments    Shipment[] @relation("CustomerShipments")
   bids         Bid[]      @relation("TransporterBids")
   assignments  Shipment[] @relation("TransporterAssignments")
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 
   @@map("users")
 }
@@ -54,6 +56,8 @@ model Shipment {
   bids             Bid[]
   assignedTo       User?    @relation("TransporterAssignments", fields: [transporterId], references: [id])
   transporterId    String?
+  trackings        Tracking[]
+  messages         Message[]
 
   @@map("shipments")
 }
@@ -71,4 +75,33 @@ model Bid {
   updatedAt   DateTime @updatedAt
 
   @@map("bids")
+}
+
+model Tracking {
+  id          String   @id @default(uuid())
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id])
+  location    String
+  status      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("trackings")
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id])
+  senderId    String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("messages")
 } 

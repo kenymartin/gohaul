@@ -1,14 +1,13 @@
-import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { ShipmentStatus, UserRole } from '@gohaul/shared';
-import { authenticate, authorize, AuthRequest } from '../utils/auth';
+import { Router, Response, NextFunction, RequestHandler } from 'express';
+import { ShipmentStatus, UserRole, PrismaClient } from '@prisma/client';
+import { authenticate, AuthRequest } from '../utils/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-router.get('/stats', authenticate, async (req: AuthRequest, res) => {
+const getStats: RequestHandler = async (req, res, next) => {
   try {
-    const { role, userId } = req.user!;
+    const { role, userId } = (req as AuthRequest).user!;
     let whereClause = {};
 
     if (role === UserRole.CUSTOMER) {
@@ -61,6 +60,8 @@ router.get('/stats', authenticate, async (req: AuthRequest, res) => {
       error: 'Internal server error',
     });
   }
-});
+};
+
+router.get('/stats', authenticate, getStats);
 
 export default router; 

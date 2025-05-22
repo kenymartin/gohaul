@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { Shipment, Bid, User } from '@gohaul/shared';
+import { Shipment, Bid, User } from '@prisma/client';
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.mailtrap.io',
@@ -44,10 +44,10 @@ export const sendBidPlacedEmail = async (bid: Bid, shipment: Shipment, customer:
   });
 };
 
-export const sendBidAcceptedEmail = async (bid: Bid, shipment: Shipment, transporter: User) => {
+export const sendBidAcceptedEmail = async (bid: Bid, shipment: Shipment, transporterUser: User) => {
   await transporter.sendMail({
     from: '"GoHaul" <noreply@gohaul.com>',
-    to: transporter.email,
+    to: transporterUser.email,
     subject: 'Your Bid Was Accepted',
     html: `
       <h1>Congratulations! Your bid was accepted</h1>

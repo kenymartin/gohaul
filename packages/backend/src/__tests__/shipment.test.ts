@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
-import { UserRole, ShipmentStatus } from '@gohaul/shared';
+import { UserRole, ShipmentStatus } from '@prisma/client';
 import { generateToken } from '../utils/auth';
-import app from '../index';
+import app from '../app';
 
 const prisma = new PrismaClient();
 

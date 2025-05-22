@@ -38,7 +38,16 @@ describe('BidService', () => {
     it('should create a bid successfully', async () => {
       const mockShipment = {
         id: mockBidData.shipmentId,
-        status: ShipmentStatus.AWAITING_BIDS
+        status: ShipmentStatus.AWAITING_BIDS,
+        customerId: 'customer-123',
+        origin: 'Origin',
+        destination: 'Destination',
+        size: 'MEDIUM',
+        weight: 100,
+        description: 'Test shipment',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        transporterId: null
       };
 
       const mockCreatedBid = {
@@ -83,7 +92,16 @@ describe('BidService', () => {
     it('should throw error if shipment is not accepting bids', async () => {
       const mockShipment = {
         id: mockBidData.shipmentId,
-        status: ShipmentStatus.BID_ACCEPTED
+        status: ShipmentStatus.BID_ACCEPTED,
+        customerId: 'customer-123',
+        origin: 'Origin',
+        destination: 'Destination',
+        size: 'MEDIUM',
+        weight: 100,
+        description: 'Test shipment',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        transporterId: null
       };
 
       mockPrisma.shipment.findUnique.mockResolvedValue(mockShipment);
@@ -96,13 +114,25 @@ describe('BidService', () => {
     it('should throw error if transporter already placed a bid', async () => {
       const mockShipment = {
         id: mockBidData.shipmentId,
-        status: ShipmentStatus.AWAITING_BIDS
+        status: ShipmentStatus.AWAITING_BIDS,
+        customerId: 'customer-123',
+        origin: 'Origin',
+        destination: 'Destination',
+        size: 'MEDIUM',
+        weight: 100,
+        description: 'Test shipment',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        transporterId: null
       };
 
       const existingBid = {
         id: 'existing-bid',
         ...mockBidData,
-        transporterId: mockTransporterId
+        transporterId: mockTransporterId,
+        status: 'PENDING',
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       mockPrisma.shipment.findUnique.mockResolvedValue(mockShipment);
@@ -124,6 +154,10 @@ describe('BidService', () => {
         shipmentId: 'shipment-123',
         transporterId: 'transporter-123',
         status: 'PENDING',
+        price: 1000,
+        eta: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
         shipment: {
           customerId: mockCustomerId
         }
@@ -136,7 +170,7 @@ describe('BidService', () => {
 
       mockPrisma.bid.findUnique.mockResolvedValue(mockBid);
       mockPrisma.bid.update.mockResolvedValue(mockUpdatedBid);
-      mockPrisma.$transaction.mockImplementation((callback) => callback(mockPrisma));
+      mockPrisma.$transaction.mockImplementation((callback: any) => callback(mockPrisma));
 
       const result = await bidService.acceptBid(mockBidId, mockCustomerId);
 
@@ -169,6 +203,13 @@ describe('BidService', () => {
     it('should throw error if user is not the shipment customer', async () => {
       const mockBid = {
         id: mockBidId,
+        shipmentId: 'shipment-123',
+        transporterId: 'transporter-123',
+        status: 'PENDING',
+        price: 1000,
+        eta: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
         shipment: {
           customerId: 'different-customer'
         }
