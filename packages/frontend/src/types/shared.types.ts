@@ -1,10 +1,24 @@
 // Shared types for the GoHaul application
+
+export interface LocationData {
+  address: string;
+  lat: number;
+  lng: number;
+  placeId?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+}
+
 export interface CreateShipmentDto {
   origin: string;
   destination: string;
   size: 'SMALL' | 'MEDIUM' | 'LARGE';
   weight: number;
   description: string;
+  originLocation?: LocationData;
+  destinationLocation?: LocationData;
 }
 
 export interface Shipment {
@@ -27,6 +41,8 @@ export interface Shipment {
     email: string;
   };
   bids?: Bid[];
+  originLocation?: LocationData;
+  destinationLocation?: LocationData;
 }
 
 export interface Bid {

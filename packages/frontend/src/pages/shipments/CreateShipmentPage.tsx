@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import { shipmentService, CreateShipmentDto } from '../../services/shipment.service';
+import LocationPicker from '../../components/ui/LocationPicker';
+import { shipmentService } from '../../services/shipment.service';
+import { CreateShipmentDto, LocationData } from '../../types/shared.types';
 
 const createShipmentSchema = z.object({
   origin: z.string().min(1, 'Origin is required'),
@@ -14,6 +16,26 @@ const createShipmentSchema = z.object({
   size: z.enum(['SMALL', 'MEDIUM', 'LARGE']),
   weight: z.number().min(0.1, 'Weight must be greater than 0'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
+  originLocation: z.object({
+    address: z.string(),
+    lat: z.number(),
+    lng: z.number(),
+    placeId: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional(),
+  }).optional(),
+  destinationLocation: z.object({
+    address: z.string(),
+    lat: z.number(),
+    lng: z.number(),
+    placeId: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional(),
+  }).optional(),
 });
 
 type CreateShipmentFormData = z.infer<typeof createShipmentSchema>;
@@ -26,8 +48,9 @@ export default function CreateShipmentPage() {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
+    control,
     watch,
+    setValue,
   } = useForm<CreateShipmentFormData>({
     resolver: zodResolver(createShipmentSchema),
     defaultValues: {
@@ -41,13 +64,39 @@ export default function CreateShipmentPage() {
   const onSubmit = async (data: CreateShipmentFormData) => {
     try {
       setIsLoading(true);
-      const shipment = await shipmentService.create(data);
+      
+      // Prepare shipment data
+      const shipmentData: CreateShipmentDto = {
+        origin: data.originLocation?.address || data.origin,
+        destination: data.destinationLocation?.address || data.destination,
+        size: data.size,
+        weight: data.weight,
+        description: data.description,
+        originLocation: data.originLocation,
+        destinationLocation: data.destinationLocation,
+      };
+
+      const shipment = await shipmentService.create(shipmentData);
       toast.success('Shipment created successfully!');
       navigate(`/shipments/${shipment.id}`);
     } catch (error) {
       toast.error('Failed to create shipment');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOriginLocationChange = (location: LocationData | null) => {
+    setValue('originLocation', location || undefined);
+    if (location) {
+      setValue('origin', location.address);
+    }
+  };
+
+  const handleDestinationLocationChange = (location: LocationData | null) => {
+    setValue('destinationLocation', location || undefined);
+    if (location) {
+      setValue('destination', location.address);
     }
   };
 
@@ -63,7 +112,7 @@ export default function CreateShipmentPage() {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-[#FF9900] rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -79,20 +128,58 @@ export default function CreateShipmentPage() {
           {/* Shipment Details */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">📍 Shipment Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                label="Pickup Location"
-                placeholder="Enter pickup address or city"
-                error={errors.origin?.message}
-                {...register('origin')}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Controller
+                name="originLocation"
+                control={control}
+                render={({ field }) => (
+                  <LocationPicker
+                    label="Pickup Location"
+                    placeholder="Enter pickup address or click on map"
+                    value={field.value || null}
+                    onChange={handleOriginLocationChange}
+                    error={errors.origin?.message}
+                    required
+                  />
+                )}
               />
               
-              <Input
-                label="Delivery Location"
-                placeholder="Enter delivery address or city"
-                error={errors.destination?.message}
-                {...register('destination')}
+              <Controller
+                name="destinationLocation"
+                control={control}
+                render={({ field }) => (
+                  <LocationPicker
+                    label="Delivery Location"
+                    placeholder="Enter delivery address or click on map"
+                    value={field.value || null}
+                    onChange={handleDestinationLocationChange}
+                    error={errors.destination?.message}
+                    required
+                  />
+                )}
               />
+            </div>
+
+            {/* Fallback input fields for when location picker isn't working */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Pickup Location (Text)"
+                  placeholder="Enter pickup address or city"
+                  error={errors.origin?.message}
+                  {...register('origin')}
+                />
+                
+                <Input
+                  label="Delivery Location (Text)"
+                  placeholder="Enter delivery address or city"
+                  error={errors.destination?.message}
+                  {...register('destination')}
+                />
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                💡 Use the map picker above for more precise locations, or use these text fields as backup
+              </p>
             </div>
           </div>
 
@@ -109,7 +196,7 @@ export default function CreateShipmentPage() {
                     key={option.value}
                     className={`relative flex cursor-pointer rounded-lg border p-4 focus:outline-none ${
                       watchedSize === option.value
-                        ? 'border-blue-600 ring-2 ring-blue-600 bg-blue-50'
+                        ? 'border-[#FF9900] ring-2 ring-[#FF9900] bg-orange-50'
                         : 'border-gray-300 bg-white hover:border-gray-400'
                     }`}
                   >
@@ -148,7 +235,7 @@ export default function CreateShipmentPage() {
                   step="0.1"
                   min="0.1"
                   placeholder="0.0"
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#FF9900] focus:outline-none focus:ring-1 focus:ring-[#FF9900]"
                   {...register('weight', { valueAsNumber: true })}
                 />
                 {errors.weight && (
@@ -168,7 +255,7 @@ export default function CreateShipmentPage() {
               <textarea
                 rows={4}
                 placeholder="Describe what you're shipping, any special handling requirements, pickup/delivery instructions, etc."
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#FF9900] focus:outline-none focus:ring-1 focus:ring-[#FF9900]"
                 {...register('description')}
               />
               {errors.description && (
@@ -177,10 +264,21 @@ export default function CreateShipmentPage() {
             </div>
           </div>
 
+          {/* Distance & Route Preview */}
+          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-6">
+            <h3 className="text-sm font-semibold text-orange-900 mb-2">🗺️ Route Information</h3>
+            <div className="text-sm text-orange-800 space-y-1">
+              <p>• Precise GPS coordinates will help transporters provide accurate quotes</p>
+              <p>• Route optimization reduces costs and delivery time</p>
+              <p>• Real-time tracking becomes available for selected locations</p>
+            </div>
+          </div>
+
           {/* Tips Section */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
             <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 Tips for Getting Great Bids</h3>
             <ul className="text-sm text-blue-800 space-y-1">
+              <li>• Use the map picker for precise pickup and delivery locations</li>
               <li>• Provide accurate dimensions and weight</li>
               <li>• Include clear pickup and delivery instructions</li>
               <li>• Mention if special handling is required</li>
@@ -202,9 +300,9 @@ export default function CreateShipmentPage() {
               <Button
                 type="submit"
                 isLoading={isLoading}
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                className="flex-1"
               >
-                Post Shipment
+                {isLoading ? 'Creating Shipment...' : 'Post Shipment'}
               </Button>
             </div>
           </div>
