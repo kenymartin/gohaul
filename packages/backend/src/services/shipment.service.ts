@@ -1,196 +1,117 @@
-import { PrismaClient, ShipmentStatus } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
-import { CreateShipmentDTO, UpdateShipmentDTO } from '../types/shipment.types';
-import { AppError } from '../utils/error';
+import { PrismaClient, Shipment, ShipmentStatus, User } from '@prisma/client';
+import { CreateShipmentInput, UpdateShipmentStatusInput, CreateBidInput } from '../validations/shipment.validation';
+import { NotFoundError, BadRequestError } from '../utils/errors';
 
 const prisma = new PrismaClient();
 
 export class ShipmentService {
-  async createShipment(data: CreateShipmentDTO) {
+  async createShipment(data: CreateShipmentInput, customerId: string): Promise<Shipment> {
     return prisma.shipment.create({
       data: {
         ...data,
-        status: 'PENDING'
+        customerId,
+        status: ShipmentStatus.PENDING,
       },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
     });
   }
 
-  async getShipmentById(id: string) {
+  async getShipment(id: string): Promise<Shipment> {
     const shipment = await prisma.shipment.findUnique({
       where: { id },
       include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
+        customer: true,
+        assignedTo: true,
         bids: {
           include: {
-            transporter: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
+            transporter: true,
+          },
         },
-        trackings: true
-      }
+        trackings: true,
+      },
     });
 
     if (!shipment) {
-      throw new AppError('Shipment not found', 404);
+      throw new NotFoundError('Shipment not found');
     }
 
     return shipment;
   }
 
-  async updateShipment(id: string, data: UpdateShipmentDTO) {
+  async updateShipmentStatus(
+    id: string,
+    data: UpdateShipmentStatusInput
+  ): Promise<Shipment> {
     const shipment = await prisma.shipment.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!shipment) {
-      throw new AppError('Shipment not found', 404);
+      throw new NotFoundError('Shipment not found');
     }
 
     return prisma.shipment.update({
       where: { id },
-      data,
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
+      data: { status: data.status },
     });
   }
 
-  async deleteShipment(id: string) {
+  async createBid(
+    shipmentId: string,
+    transporterId: string,
+    data: CreateBidInput
+  ) {
     const shipment = await prisma.shipment.findUnique({
-      where: { id }
+      where: { id: shipmentId },
     });
 
     if (!shipment) {
-      throw new AppError('Shipment not found', 404);
+      throw new NotFoundError('Shipment not found');
     }
 
-    await prisma.shipment.delete({
-      where: { id }
-    });
-  }
+    if (shipment.status !== ShipmentStatus.AWAITING_BIDS) {
+      throw new BadRequestError('Shipment is not accepting bids');
+    }
 
-  async getCustomerShipments(customerId: string) {
-    return prisma.shipment.findMany({
-      where: { customerId },
-      include: {
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        bids: {
-          include: {
-            transporter: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        }
+    return prisma.bid.create({
+      data: {
+        ...data,
+        shipmentId,
+        transporterId,
       },
-      orderBy: { createdAt: 'desc' }
     });
   }
 
-  async getTransporterShipments(transporterId: string) {
-    return prisma.shipment.findMany({
-      where: { transporterId },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        bids: {
-          include: {
-            transporter: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-  }
-
-  async updateShipmentStatus(id: string, status: string) {
+  async acceptBid(shipmentId: string, bidId: string, customerId: string) {
     const shipment = await prisma.shipment.findUnique({
-      where: { id }
+      where: { id: shipmentId },
+      include: { bids: true },
     });
 
     if (!shipment) {
-      throw new AppError('Shipment not found', 404);
+      throw new NotFoundError('Shipment not found');
     }
 
-    return prisma.shipment.update({
-      where: { id },
-      data: { status: status as ShipmentStatus },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
+    if (shipment.customerId !== customerId) {
+      throw new BadRequestError('Only the customer can accept bids');
+    }
+
+    const bid = shipment.bids.find((b) => b.id === bidId);
+    if (!bid) {
+      throw new NotFoundError('Bid not found');
+    }
+
+    return prisma.$transaction([
+      prisma.shipment.update({
+        where: { id: shipmentId },
+        data: {
+          status: ShipmentStatus.BID_ACCEPTED,
+          transporterId: bid.transporterId,
         },
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    });
+      }),
+      prisma.bid.update({
+        where: { id: bidId },
+        data: { status: 'ACCEPTED' },
+      }),
+    ]);
   }
 } 

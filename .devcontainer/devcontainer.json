@@ -24,13 +24,9 @@
     }
   },
 
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
-
   "forwardPorts": [3000, 3001],
 
-  "postCreateCommand": "npm install && npm run setup",
+  "postCreateCommand": "pnpm install && pnpm run setup",
 
   "remoteUser": "node"
 } 

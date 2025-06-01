@@ -1,14 +1,15 @@
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CreateShipmentDto } from '@gohaul/shared';
+import { CreateShipmentDto } from '../types/shared.types';
 import axios from 'axios';
 
 const shipmentSchema = z.object({
   origin: z.string().min(1, 'Origin is required'),
   destination: z.string().min(1, 'Destination is required'),
-  size: z.string().min(1, 'Size is required'),
-  weight: z.number().positive('Weight must be positive'),
+  size: z.enum(['SMALL', 'MEDIUM', 'LARGE']),
+  weight: z.number().min(1, 'Weight must be greater than 0'),
   description: z.string().min(1, 'Description is required'),
 });
 

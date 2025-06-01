@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,99 +12,232 @@ datasource db {
 
 enum UserRole {
   CUSTOMER
+  COMPANY
   TRANSPORTER
 }
 
-enum ShipmentStatus {
+enum JobType {
+  STANDARD    // Fixed price offer
+  AUCTION     // Bidding-based
+}
+
+enum JobStatus {
   PENDING
-  AWAITING_BIDS
+  OPEN_FOR_BIDS
   BID_ACCEPTED
+  ASSIGNED
   IN_TRANSIT
   DELIVERED
+  CANCELLED
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  CAR
+  VAN
+  SMALL_TRUCK
+  MEDIUM_TRUCK
+  LARGE_TRUCK
+  TRAILER
+  SPECIALIZED
+}
+
+enum NotificationType {
+  NEW_JOB
+  BID_RECEIVED
+  BID_ACCEPTED
+  BID_REJECTED
+  JOB_ASSIGNED
+  JOB_COMPLETED
+  RATING_RECEIVED
+  PAYMENT_RECEIVED
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      UserRole
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String
+  name            String
+  role            UserRole
+  phone           String?
+  address         String?
+  companyName     String?  // For COMPANY role
+  companyLicense  String?  // For COMPANY role
+  profileImage    String?
+  isVerified      Boolean  @default(false)
+  rating          Float?   @default(0)
+  totalRatings    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  // Relations
-  shipments    Shipment[] @relation("CustomerShipments")
-  bids         Bid[]      @relation("TransporterBids")
-  assignments  Shipment[] @relation("TransporterAssignments")
-  sentMessages     Message[] @relation("SentMessages")
-  receivedMessages Message[] @relation("ReceivedMessages")
+  // Relationships
+  postedJobs      Job[]           @relation("JobPoster")
+  assignedJobs    Job[]           @relation("JobTransporter")
+  bids            Bid[]
+  vehicles        Vehicle[]
+  sentReviews     Review[]        @relation("ReviewAuthor")
+  receivedReviews Review[]        @relation("ReviewRecipient")
+  notifications   Notification[]
+  trackingUpdates TrackingUpdate[]
 
   @@map("users")
 }
 
-model Shipment {
-  id          String         @id @default(uuid())
-  customerId  String
-  customer    User           @relation("CustomerShipments", fields: [customerId], references: [id])
-  origin      String
-  destination String
-  size        String
-  weight      Float
-  description String
-  status      ShipmentStatus @default(PENDING)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+model Vehicle {
+  id           String      @id @default(cuid())
+  userId       String
+  type         VehicleType
+  make         String
+  model        String
+  year         Int
+  licensePlate String
+  capacity     String      // e.g., "1000kg", "50 cubic feet"
+  description  String?
+  images       String[]    // Array of image URLs
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
-  // Relations
-  bids             Bid[]
-  assignedTo       User?    @relation("TransporterAssignments", fields: [transporterId], references: [id])
-  transporterId    String?
-  trackings        Tracking[]
-  messages         Message[]
+  // Relationships
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs         Job[]
 
-  @@map("shipments")
+  @@map("vehicles")
+}
+
+model Job {
+  id                String    @id @default(cuid())
+  posterId          String
+  transporterId     String?
+  vehicleId         String?
+  title             String
+  description       String
+  type              JobType   @default(STANDARD)
+  status            JobStatus @default(PENDING)
+  
+  // Pickup details
+  pickupLocation    String
+  pickupLatitude    Float?
+  pickupLongitude   Float?
+  pickupDateTime    DateTime?
+  pickupInstructions String?
+  
+  // Delivery details
+  deliveryLocation  String
+  deliveryLatitude  Float?
+  deliveryLongitude Float?
+  deliveryDateTime  DateTime?
+  deliveryInstructions String?
+  
+  // Item details
+  itemType          String
+  weight            Float?
+  dimensions        String?
+  isFragile         Boolean   @default(false)
+  isOversized       Boolean   @default(false)
+  specialRequirements String?
+  
+  // Pricing
+  fixedPrice        Float?    // For STANDARD jobs
+  startingBid       Float?    // For AUCTION jobs
+  maxBudget         Float?    // Maximum budget for auction
+  currency          String    @default("USD")
+  
+  // Timing
+  biddingEndsAt     DateTime? // For AUCTION jobs
+  expiresAt         DateTime?
+  
+  images            String[]  // Array of image URLs
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  poster            User              @relation("JobPoster", fields: [posterId], references: [id])
+  transporter       User?             @relation("JobTransporter", fields: [transporterId], references: [id])
+  vehicle           Vehicle?          @relation(fields: [vehicleId], references: [id])
+  bids              Bid[]
+  trackingUpdates   TrackingUpdate[]
+  reviews           Review[]
+  notifications     Notification[]
+
+  @@map("jobs")
 }
 
 model Bid {
-  id          String   @id @default(uuid())
-  shipmentId  String
-  shipment    Shipment @relation(fields: [shipmentId], references: [id])
+  id            String    @id @default(cuid())
+  jobId         String
   transporterId String
-  transporter  User    @relation("TransporterBids", fields: [transporterId], references: [id])
-  price       Float
-  eta         DateTime
-  status      String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  amount        Float
+  message       String?
+  estimatedDelivery DateTime?
+  status        BidStatus @default(PENDING)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
+  // Relationships
+  job           Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  transporter   User      @relation(fields: [transporterId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, transporterId])
   @@map("bids")
 }
 
-model Tracking {
-  id          String   @id @default(uuid())
-  shipmentId  String
-  shipment    Shipment @relation(fields: [shipmentId], references: [id])
-  location    String
-  status      String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model TrackingUpdate {
+  id            String   @id @default(cuid())
+  jobId         String
+  transporterId String
+  location      String
+  latitude      Float?
+  longitude     Float?
+  status        String
+  message       String?
+  timestamp     DateTime @default(now())
 
-  @@map("trackings")
+  // Relationships
+  job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  transporter   User     @relation(fields: [transporterId], references: [id], onDelete: Cascade)
+
+  @@map("tracking_updates")
 }
 
-model Message {
-  id          String   @id @default(uuid())
-  shipmentId  String
-  shipment    Shipment @relation(fields: [shipmentId], references: [id])
-  senderId    String
-  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
-  receiverId  String
-  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  content     String
-  isRead      Boolean  @default(false)
+model Review {
+  id          String   @id @default(cuid())
+  jobId       String
+  authorId    String   // Person writing the review
+  recipientId String   // Person being reviewed
+  rating      Int      // 1-5 stars
+  comment     String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  @@map("messages")
+  // Relationships
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  author      User     @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  recipient   User     @relation("ReviewRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, authorId, recipientId])
+  @@map("reviews")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  jobId     String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  // Relationships
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job?             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 } 

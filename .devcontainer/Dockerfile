@@ -9,14 +9,14 @@ RUN apk add --no-cache \
     make \
     g++
 
-# Install pnpm and typescript globally
-RUN npm install -g pnpm typescript
+# Install pnpm globally
+RUN npm install -g pnpm@latest
 
 # Create app directory
 WORKDIR /workspace
 
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-workspace.yaml ./
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/frontend/package.json ./packages/frontend/
 COPY packages/shared/package.json ./packages/shared/
@@ -31,7 +31,7 @@ COPY . .
 RUN cd packages/shared && pnpm build
 
 # Ensure backend devDependencies are installed
-RUN cd packages/backend && pnpm install --filter @gohaul/backend...
+RUN cd packages/backend && pnpm install
 
 # Generate Prisma client
 RUN cd packages/backend && pnpm prisma:generate

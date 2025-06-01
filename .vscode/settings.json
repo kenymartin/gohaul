@@ -10,5 +10,14 @@
             "username": "gohaul",
             "password": "gohaul"
         }
-    ]
+    ],
+    "npm.packageManager": "pnpm",
+    "npm.enableScriptExplorer": true,
+    "npm.enableRunFromFolder": true,
+    "npm.autoDetect": "on",
+    "npm.runSilent": true,
+    "npm.useLegacyLockFile": false,
+    "npm.exclude": "**/node_modules/**",
+    "npm.include": "**/package.json",
+    "npm.packageManagerPath": "pnpm"
 }

@@ -1,0 +1,68 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+“Answer like a senior web developer.”
+Ensures quality responses grounded in experience.
+
+“Use current best practices with [tech stack].”
+Example:
+Use current best practices with React 18, TypeScript, and TailwindCSS.
+
+“Explain your reasoning step-by-step, then provide the final code.”
+Prevents black-box answers and helps debugging or learning.
+
+“Only use features supported by [Node.js vXX / TypeScript X.X / React X.X].”
+Avoids hallucinated APIs or syntax errors.
+
+“Do not invent library APIs. If unsure, say so.”
+Great for reducing hallucination with unfamiliar libraries.
+
+“Stick to what is in the current codebase context.”
+Prevents AI from introducing unrelated or incompatible code.
+
+🔧 Code-Specific Prompts
+“Refactor this code to follow SOLID principles.”
+For clean, maintainable backend or frontend logic.
+
+“Rewrite this code with proper async/await and error handling.”
+Enforces reliable asynchronous patterns.
+
+“Create a type-safe version using Zod and TypeScript.”
+Ensures proper validation and type coverage.
+
+“Add proper input validation using [e.g., Joi, Zod].”
+Keeps API layers secure and robust.
+
+“Show only the code. No explanation.”
+Useful when you only want to copy-paste, especially inside Cursor.
+
+“Give unit tests for this using [Jest/Vitest].”
+Automates test generation with accurate coverage.
+
+🧠 AI Behavior Control
+“Avoid assumptions. Ask questions if requirements are unclear.”
+Encourages clarification instead of hallucinated logic.
+
+“Stay within the current file/module context.”
+Important when editing files using Cursor or working inside a project.
+
+“Do not generate placeholder logic like ‘fetchData()’ unless the full implementation is shown.”
+Prevents vague or useless code stubs.
+
+🧪 Real-World Prompt Examples
+text
+Copy
+Edit
+// Good prompt to fix code
+"Fix this TypeScript function to handle edge cases, and make sure it doesn't throw runtime errors."
+
+// Good prompt to generate an API
+"Generate a secure Express route for user registration, with bcrypt password hashing, Prisma DB access, and error handling."
+
+// Good refactor prompt
+"Refactor this React component to use useEffect and useState properly, and follow the hooks rules."
+
+// Good frontend validation prompt
+"Use Zod schema to validate this form's fields, including email, password, and contact type."

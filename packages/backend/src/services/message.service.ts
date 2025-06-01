@@ -1,145 +1,56 @@
-import { PrismaClient } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
-import { CreateMessageDTO, UpdateMessageDTO } from '../types/message.types';
-import { AppError } from '../utils/error';
+import { PrismaClient, Message } from '@prisma/client';
+import { NotFoundError, BadRequestError } from '../utils/errors';
 
 const prisma = new PrismaClient();
 
 export class MessageService {
-  async createMessage(data: CreateMessageDTO) {
+  async createMessage(
+    shipmentId: string,
+    senderId: string,
+    receiverId: string,
+    content: string
+  ): Promise<Message> {
     const shipment = await prisma.shipment.findUnique({
-      where: { id: data.shipmentId }
+      where: { id: shipmentId },
+      include: { customer: true, assignedTo: true },
     });
 
     if (!shipment) {
-      throw new AppError('Shipment not found', 404);
+      throw new NotFoundError('Shipment not found');
+    }
+
+    // Verify sender and receiver are involved in the shipment
+    if (
+      senderId !== shipment.customerId &&
+      senderId !== shipment.transporterId
+    ) {
+      throw new BadRequestError('Sender is not involved in this shipment');
+    }
+
+    if (
+      receiverId !== shipment.customerId &&
+      receiverId !== shipment.transporterId
+    ) {
+      throw new BadRequestError('Receiver is not involved in this shipment');
     }
 
     return prisma.message.create({
-      data,
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        receiver: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        shipment: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            status: true
-          }
-        }
-      }
+      data: {
+        shipmentId,
+        senderId,
+        receiverId,
+        content,
+      },
     });
   }
 
-  async getMessageById(id: string) {
-    const message = await prisma.message.findUnique({
-      where: { id },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        receiver: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        shipment: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            status: true
-          }
-        }
-      }
-    });
-
-    if (!message) {
-      throw new AppError('Message not found', 404);
-    }
-
-    return message;
-  }
-
-  async updateMessage(id: string, data: UpdateMessageDTO) {
-    const message = await prisma.message.findUnique({
-      where: { id }
-    });
-
-    if (!message) {
-      throw new AppError('Message not found', 404);
-    }
-
-    return prisma.message.update({
-      where: { id },
-      data,
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        receiver: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        shipment: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            status: true
-          }
-        }
-      }
-    });
-  }
-
-  async deleteMessage(id: string) {
-    const message = await prisma.message.findUnique({
-      where: { id }
-    });
-
-    if (!message) {
-      throw new AppError('Message not found', 404);
-    }
-
-    await prisma.message.delete({
-      where: { id }
-    });
-  }
-
-  async getShipmentMessages(shipmentId: string) {
+  async getShipmentMessages(shipmentId: string): Promise<Message[]> {
     const shipment = await prisma.shipment.findUnique({
-      where: { id: shipmentId }
+      where: { id: shipmentId },
     });
 
     if (!shipment) {
-      throw new AppError('Shipment not found', 404);
+      throw new NotFoundError('Shipment not found');
     }
 
     return prisma.message.findMany({
@@ -149,93 +60,37 @@ export class MessageService {
           select: {
             id: true,
             name: true,
-            email: true
-          }
+            email: true,
+          },
         },
         receiver: {
           select: {
             id: true,
             name: true,
-            email: true
-          }
-        }
+            email: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'asc' },
     });
   }
 
-  async getUserMessages(userId: string) {
-    return prisma.message.findMany({
-      where: {
-        OR: [
-          { senderId: userId },
-          { receiverId: userId }
-        ]
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        receiver: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        shipment: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            status: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-  }
-
-  async markAsRead(id: string) {
+  async markMessageAsRead(messageId: string, userId: string): Promise<Message> {
     const message = await prisma.message.findUnique({
-      where: { id }
+      where: { id: messageId },
     });
 
     if (!message) {
-      throw new AppError('Message not found', 404);
+      throw new NotFoundError('Message not found');
+    }
+
+    if (message.receiverId !== userId) {
+      throw new BadRequestError('Only the receiver can mark messages as read');
     }
 
     return prisma.message.update({
-      where: { id },
+      where: { id: messageId },
       data: { isRead: true },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        receiver: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        shipment: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            status: true
-          }
-        }
-      }
     });
   }
 } 

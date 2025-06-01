@@ -1,27 +1,54 @@
 import { Router } from 'express';
 import { ShipmentController } from '../controllers/shipment.controller';
-import { validateRequest } from '../middleware/validation';
-import { createShipmentSchema, updateShipmentSchema, updateStatusSchema } from '../validations/shipment.validation';
-import { authenticate } from '../middleware/auth';
-import { validateRole } from '../middleware/roles';
+import { validate } from '../middleware/validation.middleware';
+import { authenticate, authorize } from '../middleware/auth.middleware';
+import { UserRole } from '@prisma/client';
+import {
+  createShipmentSchema,
+  updateShipmentStatusSchema,
+  createBidSchema,
+} from '../validations/shipment.validation';
 
 const router = Router();
 const shipmentController = new ShipmentController();
 
-// Protected routes
-router.use(authenticate);
-
 // Customer routes
-router.post('/', validateRole(['CUSTOMER']), validateRequest(createShipmentSchema), shipmentController.createShipment);
-router.get('/my-shipments', validateRole(['CUSTOMER']), shipmentController.getMyShipments);
+router.post(
+  '/',
+  authenticate,
+  authorize([UserRole.CUSTOMER]),
+  validate(createShipmentSchema),
+  shipmentController.createShipment.bind(shipmentController)
+);
+
+router.get(
+  '/:id',
+  authenticate,
+  shipmentController.getShipment.bind(shipmentController)
+);
+
+router.patch(
+  '/:id/status',
+  authenticate,
+  authorize([UserRole.CUSTOMER, UserRole.TRANSPORTER]),
+  validate(updateShipmentStatusSchema),
+  shipmentController.updateShipmentStatus.bind(shipmentController)
+);
 
 // Transporter routes
-router.get('/assigned-shipments', validateRole(['TRANSPORTER']), shipmentController.getAssignedShipments);
-router.patch('/:id/status', validateRole(['TRANSPORTER']), validateRequest(updateStatusSchema), shipmentController.updateStatus);
+router.post(
+  '/:shipmentId/bids',
+  authenticate,
+  authorize([UserRole.TRANSPORTER]),
+  validate(createBidSchema),
+  shipmentController.createBid.bind(shipmentController)
+);
 
-// Common routes
-router.get('/:id', shipmentController.getShipment);
-router.put('/:id', validateRequest(updateShipmentSchema), shipmentController.updateShipment);
-router.delete('/:id', shipmentController.deleteShipment);
+router.post(
+  '/:shipmentId/bids/:bidId/accept',
+  authenticate,
+  authorize([UserRole.CUSTOMER]),
+  shipmentController.acceptBid.bind(shipmentController)
+);
 
 export default router; 

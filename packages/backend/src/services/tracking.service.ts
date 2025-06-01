@@ -1,122 +1,46 @@
-import { PrismaClient } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
-import { CreateTrackingDTO, UpdateTrackingDTO } from '../types/tracking.types';
-import { AppError } from '../utils/error';
+import { PrismaClient, Tracking } from '@prisma/client';
+import { NotFoundError, BadRequestError } from '../utils/errors';
 
 const prisma = new PrismaClient();
 
 export class TrackingService {
-  async createTracking(data: CreateTrackingDTO) {
+  async createTracking(
+    shipmentId: string,
+    transporterId: string,
+    data: { location: string; status: string; description?: string }
+  ): Promise<Tracking> {
     const shipment = await prisma.shipment.findUnique({
-      where: { id: data.shipmentId }
+      where: { id: shipmentId },
     });
 
     if (!shipment) {
-      throw new AppError('Shipment not found', 404);
+      throw new NotFoundError('Shipment not found');
     }
 
-    if (shipment.status !== 'IN_TRANSIT') {
-      throw new AppError('Can only track shipments that are in transit', 400);
+    if (shipment.transporterId !== transporterId) {
+      throw new BadRequestError('Only the assigned transporter can update tracking');
     }
 
     return prisma.tracking.create({
-      data,
-      include: {
-        shipment: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            status: true
-          }
-        }
-      }
+      data: {
+        ...data,
+        shipmentId,
+      },
     });
   }
 
-  async getTrackingById(id: string) {
-    const tracking = await prisma.tracking.findUnique({
-      where: { id },
-      include: {
-        shipment: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            status: true
-          }
-        }
-      }
-    });
-
-    if (!tracking) {
-      throw new AppError('Tracking not found', 404);
-    }
-
-    return tracking;
-  }
-
-  async updateTracking(id: string, data: UpdateTrackingDTO) {
-    const tracking = await prisma.tracking.findUnique({
-      where: { id }
-    });
-
-    if (!tracking) {
-      throw new AppError('Tracking not found', 404);
-    }
-
-    return prisma.tracking.update({
-      where: { id },
-      data,
-      include: {
-        shipment: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            status: true
-          }
-        }
-      }
-    });
-  }
-
-  async deleteTracking(id: string) {
-    const tracking = await prisma.tracking.findUnique({
-      where: { id }
-    });
-
-    if (!tracking) {
-      throw new AppError('Tracking not found', 404);
-    }
-
-    await prisma.tracking.delete({
-      where: { id }
-    });
-  }
-
-  async getShipmentTrackings(shipmentId: string) {
+  async getShipmentTracking(shipmentId: string): Promise<Tracking[]> {
     const shipment = await prisma.shipment.findUnique({
-      where: { id: shipmentId }
+      where: { id: shipmentId },
     });
 
     if (!shipment) {
-      throw new AppError('Shipment not found', 404);
+      throw new NotFoundError('Shipment not found');
     }
 
     return prisma.tracking.findMany({
       where: { shipmentId },
-      include: {
-        shipment: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            status: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 } 

@@ -1,26 +1,29 @@
 import express from 'express';
 import cors from 'cors';
-import { handleError } from './utils/error';
-import userRoutes from './routes/user.routes';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import { errorHandler } from './middleware/error.middleware';
+import authRoutes from './routes/auth.routes';
 import shipmentRoutes from './routes/shipment.routes';
-import bidRoutes from './routes/bid.routes';
 import trackingRoutes from './routes/tracking.routes';
 import messageRoutes from './routes/message.routes';
 
 const app = express();
 
 // Middleware
+app.use(helmet());
 app.use(cors());
+app.use(morgan('dev'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/shipments', shipmentRoutes);
-app.use('/api/bids', bidRoutes);
-app.use('/api/tracking', trackingRoutes);
-app.use('/api/messages', messageRoutes);
+app.use('/api', trackingRoutes);
+app.use('/api', messageRoutes);
 
 // Error handling
-app.use(handleError);
+app.use(errorHandler);
 
 export default app; 
