@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { JobController } from '../controllers/job.controller';
-import { authenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validation.middleware';
 import { z } from 'zod';
 

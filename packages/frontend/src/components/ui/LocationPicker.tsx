@@ -39,13 +39,13 @@ export default function LocationPicker({
   const [isLoaded, setIsLoaded] = useState(false);
   const [inputValue, setInputValue] = useState(value?.address || '');
   const [showMap, setShowMap] = useState(false);
-
-  // Google Maps API Key - you'll need to set this in your environment
-  const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY_HERE';
+  
+  // Google Maps API Key from environment variables
+  const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
     const loadGoogleMaps = async () => {
-      if (isLoaded || !GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === 'YOUR_API_KEY_HERE') return;
+      if (isLoaded || !GOOGLE_MAPS_API_KEY) return;
 
       try {
         const loader = new Loader({
@@ -227,7 +227,59 @@ export default function LocationPicker({
     }
   };
 
-  const showApiKeyWarning = GOOGLE_MAPS_API_KEY === 'YOUR_API_KEY_HERE';
+  const showApiKeyWarning = !GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === 'YOUR_API_KEY_HERE';
+
+  // If no valid API key, just show a text input
+  if (showApiKeyWarning) {
+    return (
+      <div className="w-full">
+        <label className="mb-1 block text-sm font-medium text-gray-700">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        
+        <div className="mb-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p className="text-sm text-yellow-800">
+            📍 <strong>Google Maps disabled:</strong> Please enter address manually.
+            <br />
+            <span className="text-xs">To enable interactive maps, set up Google Maps API key in environment variables.</span>
+          </p>
+        </div>
+
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => {
+            const address = e.target.value;
+            setInputValue(address);
+            if (address) {
+              // Create a basic location object without coordinates
+              onChange({
+                address: address,
+                lat: 0,
+                lng: 0
+              });
+            } else {
+              onChange(null);
+            }
+          }}
+          placeholder={placeholder}
+          className={`block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#FF9900] focus:outline-none focus:ring-1 focus:ring-[#FF9900] ${
+            error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+          }`}
+        />
+        
+        {error && (
+          <p className="mt-1 text-sm text-red-600">{error}</p>
+        )}
+
+        {value && (
+          <div className="mt-2 text-xs text-gray-500">
+            📍 Address: {value.address}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -235,14 +287,6 @@ export default function LocationPicker({
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       
-      {showApiKeyWarning && (
-        <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p className="text-xs text-yellow-800">
-            ⚠️ Google Maps API key not configured. Set VITE_GOOGLE_MAPS_API_KEY in your environment.
-          </p>
-        </div>
-      )}
-
       <div className="relative">
         <input
           ref={inputRef}

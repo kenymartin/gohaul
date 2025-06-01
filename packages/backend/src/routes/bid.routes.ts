@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { BidController } from '../controllers/bid.controller';
-import { authenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/auth.middleware';
 import { validateRole } from '../middleware/roles';
 import { validateRequest } from '../middleware/validation';
 import { z } from 'zod';
