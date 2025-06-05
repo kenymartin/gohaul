@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { ShipmentController } from '../controllers/shipment.controller';
 import { validate } from '../middleware/validation.middleware';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { authenticate, authorize } from '../utils/auth';
 import { UserRole } from '@prisma/client';
 import {
   createShipmentSchema,
@@ -12,11 +12,32 @@ import {
 const router = Router();
 const shipmentController = new ShipmentController();
 
+// Get all shipments
+router.get(
+  '/',
+  authenticate,
+  shipmentController.getAllShipments.bind(shipmentController)
+);
+
+// Get my shipments
+router.get(
+  '/my',
+  authenticate,
+  shipmentController.getMyShipments.bind(shipmentController)
+);
+
+// Get available shipments
+router.get(
+  '/available',
+  authenticate,
+  shipmentController.getAvailableShipments.bind(shipmentController)
+);
+
 // Customer routes
 router.post(
   '/',
   authenticate,
-  authorize([UserRole.CUSTOMER]),
+  authorize([UserRole.CUSTOMER, UserRole.COMPANY]),
   validate(createShipmentSchema),
   shipmentController.createShipment.bind(shipmentController)
 );
@@ -30,7 +51,7 @@ router.get(
 router.patch(
   '/:id/status',
   authenticate,
-  authorize([UserRole.CUSTOMER, UserRole.TRANSPORTER]),
+  authorize([UserRole.CUSTOMER, UserRole.COMPANY, UserRole.TRANSPORTER]),
   validate(updateShipmentStatusSchema),
   shipmentController.updateShipmentStatus.bind(shipmentController)
 );
@@ -47,7 +68,7 @@ router.post(
 router.post(
   '/:shipmentId/bids/:bidId/accept',
   authenticate,
-  authorize([UserRole.CUSTOMER]),
+  authorize([UserRole.CUSTOMER, UserRole.COMPANY]),
   shipmentController.acceptBid.bind(shipmentController)
 );
 
